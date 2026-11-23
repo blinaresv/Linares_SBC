@@ -203,7 +203,7 @@ Si una regla intenta cambiar el valor de un hecho que ya existe, el cambio se ig
 
 ## Tecnologías utilizadas
 
-El proyecto está escrito en Python 3.10. El motor y la base de conocimiento solo usan la biblioteca estándar. La interfaz se hizo con Streamlit (Streamlit Inc., s. f.), la gráfica con Matplotlib, la conexión con el servicio biométrico con requests y las pruebas con pytest.
+El proyecto funciona con Python 3.10 o superior y se probó con Python 3.14, tanto en local como en la nube. El motor y la base de conocimiento solo usan la biblioteca estándar. La interfaz se hizo con Streamlit (Streamlit Inc., s. f.), que en la versión publicada corre en la 1.67; la gráfica, con Matplotlib; la conexión con el servicio biométrico, con requests, y las pruebas, con pytest. Las versiones mínimas están en requirements.txt.
 
 ## Decisiones de diseño importantes
 
@@ -226,6 +226,12 @@ Además del formulario manual, la aplicación puede recibir una selfie, tomada c
 La respuesta se traduce a hechos del dominio en el módulo servicio_biometrico.py. El score pasa a score_facial, la suplantación a sospecha_suplantacion y prueba_vida_superada, y la alerta de riesgo a en_lista_riesgo. Los errores de "no es una persona real" y "no es un rostro" también se convierten en hechos, de modo que los decide el sistema experto con sus reglas y no la interfaz. Con esos hechos se llena el formulario y se ejecuta el mismo motor de inferencia, sin cambiar ninguna regla.
 
 Las direcciones del servicio y las credenciales no están en el código. Se leen de un archivo de secretos que no se sube al repositorio, y en la versión publicada la sección puede protegerse con una clave. Si el servicio no está configurado o no responde, el formulario manual y los casos de prueba siguen funcionando. El flujo se prueba sin red con respuestas simuladas en tests/test_servicio.py.
+
+## Despliegue
+
+La aplicación está publicada en Streamlit Community Cloud, en https://linaressbc-b4psbrerwigawdyyl2viqu.streamlit.app. El servicio está conectado al repositorio https://github.com/blinaresv/Linares_SBC: cada vez que se sube un cambio a la rama main, la plataforma descarga el código, instala las dependencias de requirements.txt y reinicia la aplicación, cuyo archivo principal es src/app.py. Las credenciales del servicio biométrico se cargan en el panel de secretos de la plataforma, de modo que nunca pasan por el repositorio.
+
+La misma aplicación se puede ejecutar en local con un entorno virtual, siguiendo los pasos del manual de usuario o del README. En ese caso los secretos se leen del archivo .streamlit/secrets.toml, que está excluido del control de versiones.
 
 ## Desafíos encontrados y soluciones
 

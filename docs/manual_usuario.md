@@ -12,23 +12,22 @@ Fundación Universitaria Los Libertadores · Inteligencia Artificial II · Novie
 
 # Instalación
 
-## Requisitos del sistema
+## Versión en línea
 
-Se necesita Python 3.10 o superior, un navegador actualizado e internet la primera vez, para instalar las dependencias.
+La aplicación está publicada en https://linaressbc-b4psbrerwigawdyyl2viqu.streamlit.app y se abre desde cualquier navegador, sin instalar nada.
 
-## Pasos de instalación
+## Ejecución local
 
-Primero se descomprime el archivo del proyecto y se abre una terminal en la carpeta linares_viasus_proyecto_final_sbc. Luego se crea un entorno virtual y se instalan las dependencias. En Mac y Linux se escribe python3 en lugar de python.
+Se necesita Python 3.10 o superior; el sistema se probó con la versión 3.14. Se descarga el proyecto con git clone https://github.com/blinaresv/Linares_SBC.git o se descomprime el ZIP, y desde esa carpeta se ejecuta lo siguiente. En Windows se usa python en lugar de python3 y venv\Scripts\activate para activar el entorno.
 
 ```
-python -m venv venv
-source venv/bin/activate        (en Windows: venv\Scripts\activate)
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+streamlit run src/app.py
 ```
 
-## Cómo ejecutar la aplicación
-
-Desde la carpeta del proyecto, con el entorno virtual activo, se ejecuta streamlit run src/app.py. El navegador se abre solo en http://localhost:8501; si no se abre, basta con escribir esa dirección. Para cerrar la aplicación se presiona Ctrl + C en la terminal. Las pruebas automáticas se corren con python -m pytest tests.
+La aplicación se abre en http://localhost:8501 y se cierra con Ctrl + C en la terminal. Las siguientes veces basta con activar el entorno y ejecutar la última línea. Las pruebas automáticas se corren con python3 -m pytest tests.
 
 # Uso de la interfaz
 
