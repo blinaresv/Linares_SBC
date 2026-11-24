@@ -13,7 +13,8 @@ from grafica import grafica_zonas
 from motor_inferencia import (encadenamiento_adelante, explicar_razonamiento,
                               obtener_conclusiones, porque, validar_hechos)
 from servicio_biometrico import (ENROLAMIENTO, ErrorServicio, ServicioBiometrico,
-                                 imagen_a_base64, mapear_enrolamiento, mapear_validacion)
+                                 imagen_a_base64, mapear_documento, mapear_enrolamiento,
+                                 mapear_validacion)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
@@ -103,6 +104,10 @@ def consultar_persona():
     }
 
 
+def formato_de(archivo):
+    return "image/png" if archivo.type == "image/png" else "image/jpeg"
+
+
 def enviar_selfie():
     """Paso 2: guarda la selfie (enrolamiento) o la compara (validación)."""
     proceso = st.session_state.get("proceso")
@@ -116,7 +121,7 @@ def enviar_selfie():
         return
 
     contenido = imagen.getvalue()
-    formato = "image/png" if imagen.type == "image/png" else "image/jpeg"
+    formato = formato_de(imagen)
     notas = []
     try:
         from PIL import Image
@@ -127,10 +132,37 @@ def enviar_selfie():
     except Exception:
         pass
 
+    # En el enrolamiento también se piden las dos caras del documento
+    anverso = st.session_state.get("doc_anverso")
+    reverso = st.session_state.get("doc_reverso")
+    if proceso["estado"] == ENROLAMIENTO and (anverso is None or reverso is None):
+        st.session_state["api_res"] = {"error": ["Para el enrolamiento cargue el anverso y el reverso del documento."]}
+        return
+
     servicio = obtener_servicio(cargar_config())
     try:
         if proceso["estado"] == ENROLAMIENTO:
+            # 1. Selfie
             respuesta = servicio.guardar_biometria(proceso["guid_ciu"], imagen_a_base64(contenido), formato)
+            ok, notas_enr = mapear_enrolamiento(respuesta)
+            if not ok:
+                st.session_state["api_res"] = {"tipo": "enrolamiento", "ok": False, "notas": notas + notas_enr,
+                                               "documento": proceso["documento"]}
+                return
+            # 2. Documento: con esto se completa el enrolamiento
+            resp_doc = servicio.guardar_documento(
+                proceso["guid_ciu"], proceso["guid_proceso"],
+                imagen_a_base64(anverso.getvalue()), formato_de(anverso),
+                imagen_a_base64(reverso.getvalue()), formato_de(reverso),
+                st.session_state["tipo_doc"])
+            ok_doc, notas_doc = mapear_documento(resp_doc)
+            st.session_state["proceso"] = None
+            st.session_state["selfie_resultado"] = contenido
+            st.session_state["api_res"] = {"tipo": "enrolamiento", "ok": ok_doc,
+                                           "notas": notas + notas_enr + notas_doc,
+                                           "documento": proceso["documento"]}
+            st.session_state["resultado"] = None
+            return
         else:
             respuesta = servicio.validar_biometria(proceso["guid_ciu"], proceso["guid_proceso"],
                                                    imagen_a_base64(contenido), formato)
@@ -142,13 +174,6 @@ def enviar_selfie():
     # La selfie se conserva en la sesión para mostrarla junto al resultado.
     st.session_state["proceso"] = None
     st.session_state["selfie_resultado"] = contenido
-
-    if proceso["estado"] == ENROLAMIENTO:
-        ok, notas_enr = mapear_enrolamiento(respuesta)
-        st.session_state["api_res"] = {"tipo": "enrolamiento", "ok": ok, "notas": notas + notas_enr,
-                                       "documento": proceso["documento"]}
-        st.session_state["resultado"] = None
-        return
 
     hechos, notas_val = mapear_validacion(respuesta, BASE)
     if hechos is None:
@@ -193,9 +218,9 @@ with st.expander("Validar con una selfie (servicio biométrico externo)"):
         st.caption("Ingrese la clave de acceso para usar el servicio.")
     else:
         st.caption("Paso 1: se consulta si la persona ya tiene su rostro registrado en el servicio. "
-                   "Paso 2: si no lo tiene, la selfie se guarda (enrolamiento); si ya lo tiene, la "
-                   "selfie se compara contra el rostro guardado (validación) y el resultado pasa por "
-                   "las 15 reglas. Las imágenes las guarda el servicio, no esta aplicación.")
+                   "Paso 2: si no lo tiene, se guardan la selfie y las dos caras del documento "
+                   "(enrolamiento); si ya lo tiene, solo se toma la selfie y se compara contra el rostro "
+                   "guardado (validación), y el resultado pasa por las 15 reglas. Las imágenes las guarda el servicio, no esta aplicación.")
 
         st.markdown("##### Paso 1. Consultar a la persona")
         c1, c2, c3 = st.columns([1, 2, 1])
@@ -211,13 +236,14 @@ with st.expander("Validar con una selfie (servicio biométrico externo)"):
         proceso = st.session_state.get("proceso")
         if proceso and proceso["estado"] == ENROLAMIENTO:
             st.warning(f"{proceso['documento']}: no tiene rostro registrado. Es un ENROLAMIENTO: "
-                       "la selfie del paso 2 se guardará como su rostro de referencia.")
+                       "en el paso 2 se guardan la selfie, como su rostro de referencia, y las dos "
+                       "caras del documento.")
         elif proceso:
             st.info(f"{proceso['documento']}: ya tiene rostro registrado. Es una VALIDACIÓN: "
                     "la selfie del paso 2 se comparará contra el rostro guardado.")
 
         if proceso:
-            st.markdown("##### Paso 2. Selfie")
+            st.markdown("##### Paso 2. Selfie" + (" y documento" if proceso["estado"] == ENROLAMIENTO else ""))
             origen = st.radio("Origen de la selfie", ["Tomar con la cámara", "Cargar archivo"],
                               horizontal=True)
             if origen == "Tomar con la cámara":
@@ -226,7 +252,19 @@ with st.expander("Validar con una selfie (servicio biométrico externo)"):
                 archivo = st.file_uploader("Imagen JPG o PNG", type=["jpg", "jpeg", "png"], key="img_archivo")
                 if archivo is not None:
                     st.image(archivo, caption="Vista previa de la selfie", width=260)
-            etiqueta = "Guardar rostro" if proceso["estado"] == ENROLAMIENTO else "Comparar rostro"
+            if proceso["estado"] == ENROLAMIENTO:
+                st.markdown("##### Documento de identidad")
+                st.caption("Para completar el enrolamiento se guardan también las dos caras del documento.")
+                d1, d2 = st.columns(2)
+                with d1:
+                    anv = st.file_uploader("Anverso, cara frontal", type=["jpg", "jpeg", "png"], key="doc_anverso")
+                    if anv is not None:
+                        st.image(anv, caption="Anverso", width=240)
+                with d2:
+                    rev = st.file_uploader("Reverso, cara posterior", type=["jpg", "jpeg", "png"], key="doc_reverso")
+                    if rev is not None:
+                        st.image(rev, caption="Reverso", width=240)
+            etiqueta = "Guardar rostro y documento" if proceso["estado"] == ENROLAMIENTO else "Comparar rostro"
             st.button(etiqueta, on_click=enviar_selfie, type="primary")
 
         res = st.session_state.get("api_res")
@@ -240,7 +278,7 @@ with st.expander("Validar con una selfie (servicio biométrico externo)"):
                            " Para validarla, vuelva al paso 1 con el mismo documento: ahora aparecerá "
                            "como validación y la nueva selfie se comparará contra este rostro.")
             else:
-                st.error("No se pudo guardar el rostro. " + " ".join(res["notas"]))
+                st.error("El enrolamiento no se completó. " + " ".join(res["notas"]))
         elif res and res.get("tipo") == "validacion":
             st.success(f"Validación de {res['documento']}: la selfie se comparó contra el rostro "
                        "registrado. " + " ".join(res["notas"]) +

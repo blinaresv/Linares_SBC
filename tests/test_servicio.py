@@ -92,3 +92,49 @@ def test_flujo_completo_simulado(monkeypatch):
     resp = servicio.validar_biometria(ciu, proc, sb.imagen_a_base64(b"img"), "image/jpeg")
     assert resp["esValido"] is True
     assert llamadas == ["token", "proceso", "validar"]   # el token se pide una sola vez
+
+
+def test_documento_exitoso():
+    resp = {"anvExitoso": True, "revExitoso": True,
+            "datos": {"data": {"nombreCompleto": "RAMIREZ TORRES CARLOS"}},
+            "respuestaTransaccion": {"esExitosa": True, "errorEntransaccion": []}}
+    ok, notas = sb.mapear_documento(resp)
+    assert ok and "RAMIREZ TORRES CARLOS" in notas[0]
+
+
+def test_documento_con_cara_rechazada():
+    resp = {"anvExitoso": True, "revExitoso": False, "revMensaje": "Reverso borroso",
+            "respuestaTransaccion": {"esExitosa": False,
+                                     "errorEntransaccion": [{"codigo": "120", "descripcion": "Documento no válido"}]}}
+    ok, notas = sb.mapear_documento(resp)
+    assert not ok and any("Reverso borroso" in n for n in notas)
+
+
+def test_enrolamiento_envia_selfie_y_documento(monkeypatch):
+    cuerpos = {}
+
+    class Resp:
+        status_code = 200
+
+        def __init__(self, datos):
+            self.datos = datos
+
+        def json(self):
+            return self.datos
+
+    def falso_post(url, json, headers, timeout, verify):
+        cuerpos[url] = json
+        if url == "token":
+            return Resp({"accessToken": "abc", "expiresIn": 1800})
+        return Resp({"respuestaTransaccion": {"esExitosa": True, "errorEntransaccion": []}})
+
+    monkeypatch.setattr(sb.requests, "post", falso_post)
+    servicio = sb.ServicioBiometrico(dict(CONFIG, url_token="token", url_guardar="guardar",
+                                          url_documento="documento", guid_conv="conv"))
+    servicio.guardar_biometria("c1", "selfie", "image/jpeg")
+    servicio.guardar_documento("c1", "p1", "anv", "image/jpeg", "rev", "image/png", "CC")
+    doc = cuerpos["documento"]
+    assert doc["GuidConv"] == "conv" and doc["GuidProcesoConvenio"] == "p1" and doc["GuidCiu"] == "c1"
+    assert doc["Anverso"] == {"Valor": "anv", "Formato": "image/jpeg"}
+    assert doc["Reverso"] == {"Valor": "rev", "Formato": "image/png"}
+    assert doc["DatosAdi"] == "CC"

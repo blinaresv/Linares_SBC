@@ -70,7 +70,7 @@ Si se carga el Caso 8, que no tiene score, ninguna regla se puede aplicar y el s
 
 ## Validar con una selfie
 
-Si el servicio biométrico está configurado, se usa la sección Validar con una selfie, arriba del formulario. En el paso 1 se escribe el documento y se presiona Consultar: la app indica si la persona no tiene rostro registrado, que es un enrolamiento, o si ya lo tiene, que es una validación. En el paso 2 se toma o carga la selfie. En un enrolamiento, el botón Guardar rostro la registra; en una validación, Comparar rostro la compara contra el rostro guardado, llena el formulario y muestra el resultado.
+Si el servicio biométrico está configurado, se usa la sección Validar con una selfie, arriba del formulario. En el paso 1 se escribe el documento y se presiona Consultar: la app indica si la persona no tiene rostro registrado, que es un enrolamiento, o si ya lo tiene, que es una validación. En el paso 2 se toma o carga la selfie. En un enrolamiento se cargan además el anverso y el reverso del documento, y el botón Guardar rostro y documento los registra; en una validación solo se pide la selfie, y Comparar rostro la compara contra el rostro guardado, llena el formulario y muestra el resultado.
 
 # Interpretación de resultados
 

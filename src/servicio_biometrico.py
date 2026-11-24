@@ -10,7 +10,8 @@ Flujo:
 1. Pedir token.
 2. Crear el proceso de la persona. El servicio responde si es enrolamiento
    (no tiene biometría) o validación (ya la tiene).
-3a. Enrolamiento: guardar la selfie.
+3a. Enrolamiento: guardar la selfie y después las dos caras del documento.
+    El enrolamiento solo queda completo cuando se guarda el documento.
 3b. Validación: comparar la selfie contra la biometría registrada.
 4. Convertir la respuesta en hechos para el sistema experto (mapear_validacion).
 
@@ -30,7 +31,7 @@ VALIDACION = 2
 ERROR_NO_ES_PERSONA_REAL = "115"
 ERROR_NO_ES_ROSTRO = "116"
 
-CAMPOS_CONFIG = ["url_token", "url_proceso", "url_guardar", "url_validar",
+CAMPOS_CONFIG = ["url_token", "url_proceso", "url_guardar", "url_validar", "url_documento",
                  "client_id", "client_secret", "guid_conv", "usuario", "clave"]
 
 
@@ -112,6 +113,20 @@ class ServicioBiometrico:
             "formato": formato,
             "usuario": self.config["usuario"],
             "actualizar": False,
+        })
+        return datos
+
+    def guardar_documento(self, guid_ciudadano, guid_proceso, anverso_b64, formato_anverso,
+                          reverso_b64, formato_reverso, tipo_doc):
+        """Guarda las dos caras del documento. En el enrolamiento va después de la selfie."""
+        _, datos = self._post(self.config["url_documento"], {
+            "GuidConv": self.config["guid_conv"],
+            "GuidProcesoConvenio": guid_proceso,
+            "GuidCiu": guid_ciudadano,
+            "Anverso": {"Valor": anverso_b64, "Formato": formato_anverso},
+            "Reverso": {"Valor": reverso_b64, "Formato": formato_reverso},
+            "DatosAdi": tipo_doc,
+            "Usuario": self.config["usuario"],
         })
         return datos
 
@@ -202,4 +217,18 @@ def mapear_enrolamiento(respuesta):
     notas = ["La selfie quedó registrada como la biometría de la persona."]
     if respuesta.get("spoofPrediction"):
         notas.append(f"Análisis de vivacidad: {respuesta['spoofPrediction']}")
+    return True, notas
+
+
+def mapear_documento(respuesta):
+    """Resume la respuesta de GuardarDocumentoAmbasCaras. Devuelve (exitoso, notas)."""
+    trans = respuesta.get("respuestaTransaccion") or {}
+    notas = []
+    for cara, ok, msg in (("Anverso", "anvExitoso", "anvMensaje"), ("Reverso", "revExitoso", "revMensaje")):
+        if respuesta.get(ok) is False:
+            notas.append(f"{cara}: {respuesta.get(msg) or 'no superó la validación'}")
+    if not trans.get("esExitosa"):
+        return False, notas + (mensajes_error(respuesta) or ["No se pudo guardar el documento."])
+    nombre = (((respuesta.get("datos") or {}).get("data")) or {}).get("nombreCompleto")
+    notas.insert(0, "El documento quedó registrado" + (f" a nombre de {nombre}." if nombre else "."))
     return True, notas

@@ -221,7 +221,7 @@ La interfaz y las pruebas usan el mismo archivo de casos, de modo que lo que se 
 
 ## Integración opcional con un servicio biométrico externo
 
-Además del formulario manual, la aplicación puede recibir una selfie, tomada con la cámara o cargada como archivo, y enviarla a un servicio biométrico externo. El proceso tiene dos pasos. En el primero se consulta a la persona por su documento, y el servicio responde si ya tiene un rostro registrado. Si no lo tiene, es un enrolamiento: la selfie del segundo paso se guarda como su rostro de referencia. Si ya lo tiene, es una validación: la selfie se compara contra el rostro guardado y el servicio devuelve el score, la detección de suplantación y una alerta de riesgo sobre el rostro. La interfaz muestra en cuál de los dos casos está la persona antes de enviar la selfie. El sistema no almacena imágenes, porque las conserva el servicio.
+Además del formulario manual, la aplicación puede recibir una selfie, tomada con la cámara o cargada como archivo, y enviarla a un servicio biométrico externo. El proceso tiene dos pasos. En el primero se consulta a la persona por su documento, y el servicio responde si ya tiene un rostro registrado. Si no lo tiene, es un enrolamiento: en el segundo paso se guardan la selfie, como su rostro de referencia, y las dos caras del documento de identidad; el enrolamiento solo queda completo cuando se registra el documento. Si ya lo tiene, es una validación: solo se pide la selfie, que se compara contra el rostro guardado y el servicio devuelve el score, la detección de suplantación y una alerta de riesgo sobre el rostro. La interfaz muestra en cuál de los dos casos está la persona antes de enviar la selfie. El sistema no almacena imágenes, porque las conserva el servicio.
 
 La respuesta se traduce a hechos del dominio en el módulo servicio_biometrico.py. El score pasa a score_facial, la suplantación a sospecha_suplantacion y prueba_vida_superada, y la alerta de riesgo a en_lista_riesgo. Los errores de "no es una persona real" y "no es un rostro" también se convierten en hechos, de modo que los decide el sistema experto con sus reglas y no la interfaz. Con esos hechos se llena el formulario y se ejecuta el mismo motor de inferencia, sin cambiar ninguna regla.
 
@@ -245,7 +245,7 @@ El tercero fue el estado de la interfaz. Streamlit vuelve a ejecutar todo el pro
 
 ## Tabla de casos de prueba
 
-La Tabla 4 resume los trece casos de prueba. El detalle está en tests/casos_prueba.md, y los trece casos, junto con las demás pruebas, 30 en total, pasan al ejecutar python -m pytest tests.
+La Tabla 4 resume los trece casos de prueba. El detalle está en tests/casos_prueba.md, y los trece casos, junto con las demás pruebas, 33 en total, pasan al ejecutar python -m pytest tests.
 
 <p class="tabnum">Tabla 4</p>
 <p class="tabtit">Casos de prueba y resultados</p>

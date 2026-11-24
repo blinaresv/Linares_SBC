@@ -72,13 +72,13 @@ No requiere instalar nada; funciona desde cualquier navegador. Se actualiza sola
    python3 -m pytest tests
    ```
 
-   Deben pasar las 30 pruebas.
+   Deben pasar las 33 pruebas.
 
 Las siguientes veces solo hacen falta tres pasos: entrar a la carpeta, activar el entorno virtual y ejecutar `streamlit run src/app.py`.
 
 ## Validar con una selfie (opcional)
 
-En la sección "Validar con una selfie" se consulta primero a la persona por su documento. Si no tiene rostro registrado, la selfie se guarda en el servicio (enrolamiento); si ya lo tiene, se compara contra el rostro guardado (validación) y la respuesta pasa por las 15 reglas. Las imágenes las conserva el servicio, no la aplicación.
+En la sección "Validar con una selfie" se consulta primero a la persona por su documento. Si no tiene rostro registrado, se guardan en el servicio la selfie y las dos caras del documento (enrolamiento); si ya lo tiene, solo se pide la selfie, que se compara contra el rostro guardado (validación), y la respuesta pasa por las 15 reglas. Las imágenes las conserva el servicio, no la aplicación.
 
 Las direcciones y credenciales del servicio no están en el repositorio:
 
